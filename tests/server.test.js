@@ -14,23 +14,20 @@ rpcClient.add("subtract", (req, res) => {
     Array.isArray(req.params) ? ([minuend, subtrahend] = req.params) : ({ minuend, subtrahend } = req.params);
     res.send(minuend - subtrahend);
 });
-rpcClient.add("update", (req, res, next) => {
+rpcClient.add("update", (req, res) => {
     console.log("server => update", req.params);
-    next();
 });
 rpcClient.add("sum", (req, res) => {
     res.send(req.params.reduce((a, c) => a + c, 0));
 });
-rpcClient.add("notify_hello", (req, res, next) => {
+rpcClient.add("notify_hello", (req, res) => {
     console.log("server => notify_hello", req.params);
-    next();
 });
-rpcClient.add("get_data", (req, res, next) => {
+rpcClient.add("get_data", (req, res) => {
     res.send(["hello", 5]);
 });
-rpcClient.add("notify_sum", (req, res, next) => {
+rpcClient.add("notify_sum", (req, res) => {
     console.log("server => notify_sum", req.params);
-    next();
 });
 
 rpcClient.connect();

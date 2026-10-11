@@ -2,22 +2,32 @@ const EventEmitter = require("events");
 const { Node } = require("./node.js");
 const { isArray, isObject } = require("./util.js");
 const { RPCError } = require("./error.js");
+const { Cache } = require("./cache.js");
 
 class Router extends EventEmitter {
-    static SEQ = 0;
-
-    constructor() {
+    constructor(options = {}) {
         super();
         this.setMaxListeners(0);
 
-        this.root = new Node();
+        this.timeout = options.timeout ?? 30_000;
+        this.cacheSize = options.cacheSize ?? 30_000;
 
-        this.timeout = 30000;
+        this.root = new Node();
+        this.seq = 0;
+        this.cache = new Cache(this.cacheSize);
 
         // this.requestId = 1;
         // this.pending = new Map();
     }
 
+    split(method) {
+        return method.split(".").filter(Boolean);
+    }
+
+    /**
+     * @param {*} method
+     * @param {FunctionHandler[]} handler
+     */
     add(method, ...handlers) {
         if (typeof method === "function") {
             handlers = [method, ...handlers];
@@ -26,36 +36,58 @@ class Router extends EventEmitter {
 
         let node = this.root;
 
-        if (method) {
-            for (const segment of method.split(".").filter(Boolean)) {
+        if (method !== null) {
+            for (const segment of this.split(method)) {
                 node = node.add(segment);
             }
         }
 
-        const router = handlers.at(-1);
-        if (router.root) {
-            const sub = handlers.pop();
-            node.merge(sub.root);
-        }
-
         for (const handler of handlers) {
-            node.handlers.push([Router.SEQ++, handler]);
+            if (handler.root) {
+                node.merge(handler.root, this.seq);
+                this.seq = node.getMaxSeq() + 1;
+            } else {
+                handler.seq = this.seq++;
+                node.handlers.push(handler);
+            }
         }
     }
 
     find(method) {
-        const handlers = [];
+        const key = method;
+
+        const cached = this.cache.get(key);
+        if (cached) return cached;
 
         let node = this.root;
-        handlers.push(...node.handlers);
 
-        for (const segment of method.split(".").filter(Boolean)) {
-            node = node.children.get(segment);
-            if (!node) break;
-            handlers.push(...node.handlers);
+        const handlers = {};
+        const errorHandlers = {};
+
+        for (const input of this.split(method)) {
+            let matched = node.children.get(input);
+
+            if (!matched) {
+                node = null;
+                break;
+            }
+
+            node = matched;
+
+            for (const handler of node.handlers) {
+                if (handler.length === 3) errorHandlers[handler.seq] = handler;
+                else handlers[handler.seq] = handler;
+            }
         }
 
-        return handlers.toSorted(([a], [b]) => a - b);
+        for (const handler of this.root.handlers) {
+            if (handler.length === 3) errorHandlers[handler.seq] = handler;
+            else handlers[handler.seq] = handler;
+        }
+
+        const value = { handlers: Object.values(handlers), errorHandlers: Object.values(errorHandlers) };
+        this.cache.set(key, value);
+        return value;
     }
 
     // handleResponse(data) {
@@ -126,36 +158,28 @@ class Router extends EventEmitter {
             );
         };
 
-        const handlers = this.find(req.method);
-        for (const [, handler] of handlers) {
-            if (end) break;
+        // const rto = setTimeout(() => {
+        //     err = new RPCError({ code: -32603, message: "Internal error (Request Timeout)" });
+        // }, this.timeout);
 
-            if ((err && handler.length !== 4) || (!err && handler.length === 4)) continue;
-
+        const { handlers, errorHandlers } = this.find(req.method);
+        try {
+            for (const handler of handlers) {
+                if (end) break;
+                await handler(req, res);
+            }
+        } catch (error) {
+            err = error;
             try {
-                await new Promise((resolve, reject) => {
-                    const rto = setTimeout(() => {
-                        next(new RPCError({ code: -32603, message: "Internal error (Request Timeout)" }));
-                    }, this.timeout);
-
-                    const next = (e) => {
-                        clearTimeout(rto);
-                        if (e) reject(e);
-                        else resolve();
-                    };
-
-                    const send = res.send;
-                    res.send = (data) => {
-                        send(data);
-                        next();
-                    };
-
-                    if (err) handler(err, req, res, next);
-                    else handler(req, res, next);
-                });
+                for (const handler of errorHandlers) {
+                    if (end) break;
+                    await handler(err, req, res);
+                }
             } catch (error) {
                 err = error;
             }
+        } finally {
+            // clearTimeout(rto);
         }
 
         if (!end) {

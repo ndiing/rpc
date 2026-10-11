@@ -90,12 +90,14 @@ router.add("method.name", (req, res, next) => {
 Handler yang didaftarkan pada suatu namespace juga berlaku untuk semua turunannya. Handler tanpa method berlaku global.
 
 ```js
-router.add((req, res, next) => {           // global
+router.add((req, res, next) => {
+    // global
     console.log("->", req.method);
     next();
 });
 
-router.add("user", (req, res, next) => {   // berlaku untuk user.*
+router.add("user", (req, res, next) => {
+    // berlaku untuk user.*
     if (!isAuthorized(req)) return res.send(Object.assign(new Error("Unauthorized"), { code: -32001 }));
     next();
 });
@@ -149,49 +151,49 @@ const responses = await client.batch([
 
 `options` diteruskan ke [`WebSocketServer`](https://github.com/websockets/ws/blob/master/doc/ws.md#class-websocketserver) milik `ws`.
 
-| Method | Keterangan |
-| --- | --- |
-| `connect()` | Mulai menjalankan WebSocket server |
-| `close()` | Tutup semua koneksi dan hentikan server |
-| `call(clientId, method, params)` | Request ke client, mengembalikan `Promise` |
-| `notify(clientId, method, params)` | Notification ke client |
-| `batch(clientId, requests)` | Batch request ke client |
-| `broadcast(method, params)` | Notification ke semua client yang terhubung |
-| `send(clientId, data)` | Kirim data mentah ke client |
-| `clients` | `Map<clientId, WebSocket>` |
+| Method                             | Keterangan                                  |
+| ---------------------------------- | ------------------------------------------- |
+| `connect()`                        | Mulai menjalankan WebSocket server          |
+| `close()`                          | Tutup semua koneksi dan hentikan server     |
+| `call(clientId, method, params)`   | Request ke client, mengembalikan `Promise`  |
+| `notify(clientId, method, params)` | Notification ke client                      |
+| `batch(clientId, requests)`        | Batch request ke client                     |
+| `broadcast(method, params)`        | Notification ke semua client yang terhubung |
+| `send(clientId, data)`             | Kirim data mentah ke client                 |
+| `clients`                          | `Map<clientId, WebSocket>`                  |
 
 ### `new RPCClient(address, options)`
 
 `address` adalah URL WebSocket. Tambahkan `?clientId=...` agar server bisa memanggil client ini.
 
-| Option | Default | Keterangan |
-| --- | --- | --- |
-| `maxAttempts` | `10` | Maksimum percobaan reconnect berturut-turut |
-| `baseDelay` | `1000` | Delay dasar reconnect (ms) |
-| `maxDelay` | `30000` | Batas atas delay reconnect (ms) |
+| Option        | Default | Keterangan                                  |
+| ------------- | ------- | ------------------------------------------- |
+| `maxAttempts` | `10`    | Maksimum percobaan reconnect berturut-turut |
+| `baseDelay`   | `1000`  | Delay dasar reconnect (ms)                  |
+| `maxDelay`    | `30000` | Batas atas delay reconnect (ms)             |
 
-| Method | Keterangan |
-| --- | --- |
-| `connect()` | Buka koneksi |
-| `close()` | Tutup koneksi |
-| `call(method, params)` | Request ke server, mengembalikan `Promise` |
-| `notify(method, params)` | Notification ke server |
-| `batch(requests)` | Batch request ke server |
-| `send(data)` | Kirim data mentah (diantrikan jika belum terhubung) |
+| Method                   | Keterangan                                          |
+| ------------------------ | --------------------------------------------------- |
+| `connect()`              | Buka koneksi                                        |
+| `close()`                | Tutup koneksi                                       |
+| `call(method, params)`   | Request ke server, mengembalikan `Promise`          |
+| `notify(method, params)` | Notification ke server                              |
+| `batch(requests)`        | Batch request ke server                             |
+| `send(data)`             | Kirim data mentah (diantrikan jika belum terhubung) |
 
 ### `Router`
 
-| Member | Keterangan |
-| --- | --- |
-| `add([method], ...handlers)` | Daftarkan handler / middleware / sub-router |
-| `handleRequest(req, res)` | Proses satu pesan masuk, `res` berupa `{ send(string) }` |
-| `timeout` | Timeout handler dan request dalam ms (default `30000`) |
+| Member                       | Keterangan                                               |
+| ---------------------------- | -------------------------------------------------------- |
+| `add([method], ...handlers)` | Daftarkan handler / middleware / sub-router              |
+| `handleRequest(req, res)`    | Proses satu pesan masuk, `res` berupa `{ send(string) }` |
+| `timeout`                    | Timeout handler dan request dalam ms (default `30000`)   |
 
 ### Event
 
-| Event | Argumen | Keterangan |
-| --- | --- | --- |
-| `response` | `data` | Dipancarkan untuk setiap response yang diterima |
+| Event      | Argumen | Keterangan                                      |
+| ---------- | ------- | ----------------------------------------------- |
+| `response` | `data`  | Dipancarkan untuk setiap response yang diterima |
 
 ## Reconnect
 
@@ -208,12 +210,12 @@ delay = min(baseDelay * 2^attempt, maxDelay) + random(0..1000) ms
 
 ## Error Code
 
-| Code | Message | Penyebab |
-| --- | --- | --- |
-| `-32700` | Parse error | JSON tidak valid |
-| `-32600` | Invalid Request | Bukan request JSON-RPC 2.0 yang valid |
-| `-32601` | Method not found | Tidak ada handler yang membalas |
-| `-32602` | Invalid params | `params` bukan array atau object |
+| Code     | Message                          | Penyebab                               |
+| -------- | -------------------------------- | -------------------------------------- |
+| `-32700` | Parse error                      | JSON tidak valid                       |
+| `-32600` | Invalid Request                  | Bukan request JSON-RPC 2.0 yang valid  |
+| `-32601` | Method not found                 | Tidak ada handler yang membalas        |
+| `-32602` | Invalid params                   | `params` bukan array atau object       |
 | `-32603` | Internal error (Request Timeout) | Handler tidak membalas dalam `timeout` |
 
 ## Testing

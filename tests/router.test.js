@@ -7,23 +7,20 @@ router.add("subtract", (req, res) => {
     Array.isArray(req.params) ? ([minuend, subtrahend] = req.params) : ({ minuend, subtrahend } = req.params);
     res.send(minuend - subtrahend);
 });
-router.add("update", (req, res, next) => {
+router.add("update", (req, res) => {
     console.log("router => update", req.params);
-    next();
 });
 router.add("sum", (req, res) => {
     res.send(req.params.reduce((a, c) => a + c, 0));
 });
-router.add("notify_hello", (req, res, next) => {
+router.add("notify_hello", (req, res) => {
     console.log("router => notify_hello", req.params);
-    next();
 });
-router.add("get_data", (req, res, next) => {
+router.add("get_data", (req, res) => {
     res.send(["hello", 5]);
 });
-router.add("notify_sum", (req, res, next) => {
+router.add("notify_sum", (req, res) => {
     console.log("router => notify_sum", req.params);
-    next();
 });
 
 describe("router", () => {
